@@ -1,0 +1,99 @@
+name: Salesforce Data Export to Google Drive
+
+on:
+  schedule:
+    - cron: "0 7 * * 2"  # Default: Monday 11 PM PST (Tue 7 AM UTC) — adjust to your timezone
+  workflow_dispatch:
+    inputs:
+      retry_count:
+        description: "Auto-retry attempt number (0 = first run)"
+        required: false
+        default: "0"
+
+permissions:
+  issues: write
+  contents: read
+  actions: write
+
+jobs:
+  export:
+    name: Download Salesforce exports to Google Drive
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show attempt number
+        run: |
+          RETRY="${{ github.event.inputs.retry_count || '0' }}"
+          echo "Attempt number: $((RETRY + 1)) of 3"
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Free up disk space
+        run: |
+          echo "=== Before cleanup ==="
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+          echo "=== After cleanup ==="
+          df -h
+
+      - name: Run export
+        id: run_export
+        env:
+          SF_CLIENT_ID:               ${{ secrets.SF_CLIENT_ID }}
+          SF_CLIENT_SECRET:           ${{ secrets.SF_CLIENT_SECRET }}
+          SF_REFRESH_TOKEN:           ${{ secrets.SF_REFRESH_TOKEN }}
+          SF_ORG_DOMAIN:              ${{ vars.SF_ORG_DOMAIN }}
+          GDRIVE_FOLDER_ID:           ${{ secrets.GDRIVE_FOLDER_ID }}
+          GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          WAIT_BETWEEN_DOWNLOADS:     ${{ vars.WAIT_BETWEEN_DOWNLOADS || '30' }}
+          HEADLESS: "true"
+        run: python export_ui.py
+
+      - name: Auto-retry on failure
+        if: failure() && steps.run_export.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const retryCount = parseInt("${{ github.event.inputs.retry_count || '0' }}");
+            const maxRetries = 2;
+
+            if (retryCount < maxRetries) {
+              const nextRetry = retryCount + 1;
+              console.log(`Attempt ${retryCount + 1} failed. Triggering retry ${nextRetry} of ${maxRetries}...`);
+              await new Promise(r => setTimeout(r, 120_000));
+              const { owner, repo } = context.repo;
+              await github.rest.actions.createWorkflowDispatch({
+                owner, repo,
+                workflow_id: "sf_ui_export.yml",
+                ref: "main",
+                inputs: { retry_count: String(nextRetry) },
+              });
+              console.log(`Retry ${nextRetry} triggered successfully.`);
+            } else {
+              console.log(`All ${maxRetries + 1} attempts failed. Creating GitHub Issue...`);
+              const { owner, repo } = context.repo;
+              await github.rest.issues.create({
+                owner, repo,
+                title: "Salesforce export failed after " + (maxRetries + 1) + " attempts -- " + new Date().toISOString().slice(0,10),
+                body: `The weekly Salesforce to Google Drive export failed on all ${maxRetries + 1} attempts.\n\nLast failed run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}\n\nPlease investigate manually.`,
+                labels: ["bug", "automated"],
+              });
+            }
