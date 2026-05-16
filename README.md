@@ -144,3 +144,38 @@ python export_ui.py
 | `EOF occurred in violation of protocol` | Transient SSL error — auto-retry will handle it |
 | `No space left on device` | Auto-retry on a fresh runner will have full disk space |
 | `Insufficient Privileges` | Salesforce user needs System Administrator profile |
+
+---
+
+## Granting Client Access to This Repository
+
+Once you have set up the repository, follow these steps to give your client access:
+
+### Option A — Invite as a Collaborator (single client)
+
+1. Go to your repository on GitHub (e.g. `github.com/YOUR_USERNAME/SalesforceExportAutomation`)
+2. Click the **Settings** tab at the top of the repo page
+3. In the left sidebar click **Collaborators**
+4. Click **Add people**
+5. Enter your client's **GitHub username or email address**
+6. Select their name from the dropdown and click **Add to repository**
+7. Your client will receive an email invitation — they must click **Accept invitation** before they can access the repo
+8. Once accepted, they can view all files and follow the Setup instructions above
+
+### Option B — GitHub Template Repository (best for multiple clients)
+
+This approach lets each client create their own independent copy of the repo with one click — recommended if you plan to deliver this to more than one client.
+
+1. Go to your repository → **Settings**
+2. Under the **General** section, check **Template repository**
+3. Change the repo visibility to **Public** (required for templates)
+   - Settings → scroll to **Danger Zone** → **Change visibility → Change to public**
+4. Share this link with your client:
+   ```
+   https://github.com/YOUR_USERNAME/SalesforceExportAutomation
+   ```
+5. Your client clicks **Use this template → Create a new repository**
+6. They name their own private repo and click **Create repository**
+7. All files are copied into their own GitHub account — they then follow the Setup instructions above to add their own secrets and variables
+
+> **Note:** Making the repo public is safe because no credentials or org-specific URLs are hardcoded in the code — everything is configured through GitHub Secrets and Variables which are never visible publicly.
