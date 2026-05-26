@@ -80,11 +80,12 @@ jobs:
               console.log(`Attempt ${retryCount + 1} failed. Triggering retry ${nextRetry} of ${maxRetries}...`);
               await new Promise(r => setTimeout(r, 120_000));
               const { owner, repo } = context.repo;
-              await github.rest.actions.createWorkflowDispatch({
+              await github.request("POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches", {
                 owner, repo,
                 workflow_id: "sf_ui_export.yml",
                 ref: "main",
                 inputs: { retry_count: String(nextRetry) },
+                headers: { "X-GitHub-Api-Version": "2022-11-28" },
               });
               console.log(`Retry ${nextRetry} triggered successfully.`);
             } else {
