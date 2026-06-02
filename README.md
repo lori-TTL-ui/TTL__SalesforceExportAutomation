@@ -51,7 +51,30 @@ Automatically downloads Salesforce weekly data export files and uploads them to 
 
 > **Note:** The script automatically detects whether you are using a Shared Drive or personal Drive folder and handles both correctly.
 
-### Step 3 — Salesforce: Create Connected App
+### Step 3 — Salesforce: Create an App for OAuth Access
+
+> **Note:** Salesforce Spring '26 introduced **External Client Apps** as the new replacement for Connected Apps. Use the method that matches your org's release.
+
+---
+
+**Option A — Salesforce Spring '26 and later: External Client App**
+
+1. In Setup, search **External Client Apps** in the Quick Find box
+2. Click **New External Client App**
+3. Fill in the **Basic Information**: name it `SF Export Automation`, enter a contact email
+4. Click **Next**
+5. On the **OAuth** tab, click **Enable OAuth**
+6. Callback URL: `https://login.salesforce.com/services/oauth2/success`
+7. Add scopes: **Full access (full)** and **Perform requests at any time (refresh_token)**
+8. Uncheck **Require Proof Key for Code Exchange (PKCE)**
+9. Click **Save**
+10. Go to **External Client Apps → Manage** → find your app → click **View**
+11. Copy the **Consumer Key** (= `SF_CLIENT_ID`) and click **Reveal** to copy the **Consumer Secret** (= `SF_CLIENT_SECRET`)
+12. Wait up to 10 minutes for the app to activate
+
+---
+
+**Option B — Salesforce Winter '26 and earlier: Connected App**
 
 1. In Salesforce Setup search for **App Manager → New Connected App**
 2. Enable **OAuth Settings**
@@ -217,6 +240,7 @@ python export_ui.py
 | `EOF occurred in violation of protocol` | Transient SSL error — auto-retry will handle it |
 | `No space left on device` | Auto-retry on a fresh runner will have full disk space |
 | `Insufficient Privileges` | Salesforce user needs System Administrator profile |
+| Can't find "New Connected App" | Your org is on Spring '26 or later — use External Client Apps instead (see Step 3 Option A) |
 
 ---
 
