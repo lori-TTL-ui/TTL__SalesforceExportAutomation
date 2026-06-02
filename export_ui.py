@@ -72,12 +72,20 @@ def gdrive_service():
 
 
 def file_exists_in_drive(service, filename: str, folder_id: str) -> bool:
-    results = service.files().list(
-        q=f"name='{filename}' and '{folder_id}' in parents and trashed=false",
-        fields="files(id, name)",
-        supportsAllDrives=True,
-        includeItemsFromAllDrives=True
-    ).execute()
+    # Works for both Shared Drives and personal My Drive folders
+    try:
+        results = service.files().list(
+            q=f"name='{filename}' and '{folder_id}' in parents and trashed=false",
+            fields="files(id, name)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True
+        ).execute()
+    except Exception:
+        # Fallback for personal Drive folders
+        results = service.files().list(
+            q=f"name='{filename}' and '{folder_id}' in parents and trashed=false",
+            fields="files(id, name)"
+        ).execute()
     return len(results.get("files", [])) > 0
 
 
@@ -86,17 +94,36 @@ def upload_file_to_drive(service, local_path: Path, folder_id: str) -> str:
     log.info("  Uploading to Drive: %s (%d MB) ...", local_path.name, size_mb)
     file_metadata = {"name": local_path.name, "parents": [folder_id]}
     media = MediaFileUpload(str(local_path), resumable=True, chunksize=DRIVE_CHUNK)
-    request = service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields="id, webViewLink",
-        supportsAllDrives=True
-    )
-    response = None
-    while response is None:
-        status, response = request.next_chunk()
-        if status:
-            log.info("    Drive upload: %d%%", int(status.progress() * 100))
+
+    # Try Shared Drive first, fall back to personal My Drive
+    try:
+        request = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id, webViewLink",
+            supportsAllDrives=True
+        )
+        response = None
+        while response is None:
+            status, response = request.next_chunk()
+            if status:
+                log.info("    Drive upload: %d%%", int(status.progress() * 100))
+    except Exception as e:
+        if "storageQuotaExceeded" in str(e) or "serviceNotAvailable" in str(e):
+            raise
+        log.warning("  Shared Drive upload failed (%s), trying personal Drive ...", e)
+        media = MediaFileUpload(str(local_path), resumable=True, chunksize=DRIVE_CHUNK)
+        request = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id, webViewLink"
+        )
+        response = None
+        while response is None:
+            status, response = request.next_chunk()
+            if status:
+                log.info("    Drive upload: %d%%", int(status.progress() * 100))
+
     log.info("  Uploaded: %s", response.get("webViewLink", ""))
     return response.get("webViewLink", "")
 
