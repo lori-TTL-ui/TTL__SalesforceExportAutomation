@@ -26,12 +26,30 @@ Automatically downloads Salesforce weekly data export files and uploads them to 
 5. Click the service account → **Keys** tab → **Add Key → Create new key → JSON** → download the file
 6. Copy the service account email (e.g. `salesforce-export@project.iam.gserviceaccount.com`)
 
-### Step 2 — Google Drive: Create Shared Drive
+### Step 2 — Google Drive: Create a Destination Folder
+
+**Option A — Google Workspace (recommended): Shared Drive**
+
+> Use this if your Google account is a Workspace/business account with Shared Drive access.
 
 1. Go to [drive.google.com](https://drive.google.com) → **Shared drives → + New**
 2. Name it (e.g. `Salesforce Exports`)
 3. Right-click → **Manage members** → add the service account email as **Content Manager**
 4. Open the Shared Drive and copy the **folder ID** from the URL
+
+**Option B — Personal Google Account: My Drive folder**
+
+> Use this if your Google account is a personal @gmail.com account without Shared Drive access.
+
+1. Go to [drive.google.com](https://drive.google.com) → **My Drive → New → Folder**
+2. Name it (e.g. `Salesforce Exports`)
+3. Right-click the folder → **Share**
+4. Add your service account email (e.g. `salesforce-export@project.iam.gserviceaccount.com`) as **Editor**
+5. Click **Share**
+6. Open the folder and copy the **folder ID** from the URL:
+   `https://drive.google.com/drive/folders/FOLDER_ID_HERE`
+
+> **Note:** The script automatically detects whether you are using a Shared Drive or personal Drive folder and handles both correctly.
 
 ### Step 3 — Salesforce: Create Connected App
 
