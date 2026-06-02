@@ -68,8 +68,9 @@ Copy the `refresh_token` from the response.
 
 1. Create a **private** GitHub repository
 2. Upload these files: `export_ui.py`, `requirements.txt`, `.github/workflows/sf_ui_export.yml`
-3. Go to **Settings → Actions → General → Workflow permissions → Read and write**
-4. Go to **Settings → Secrets and variables → Actions** and add:
+3. Go to **Settings → Actions → General → Workflow permissions → Read and write permissions** — this allows the workflow to create GitHub Issues for notifications
+4. Go to **Issues → Labels** and create these labels: `export-success` (green), `export-failure` (red), `auto-retry` (yellow), `manual-required` (purple)
+5. Go to **Settings → Secrets and variables → Actions** and add:
 
 **Secrets:**
 | Name | Value |
@@ -105,6 +106,60 @@ Use [crontab.guru](https://crontab.guru) to build your preferred schedule.
 Log into Salesforce and look at the URL. Examples:
 - `https://mycompany.my.salesforce.com` → `SF_ORG_DOMAIN = mycompany.my`
 - `https://acme.lightning.force.com` → `SF_ORG_DOMAIN = acme.my`
+
+---
+
+## Notifications
+
+This automation notifies you via **GitHub Issues** (GitHub emails you automatically for every new issue). No email server setup required.
+
+### What you receive:
+
+**On success:**
+> ✅ Export SUCCESS — 69 files uploaded — 2026-05-19
+> - Count of files uploaded, skipped, and failed
+> - Whether it was a first run or a retry
+
+**On failure (with retry coming):**
+> ⚠️ Export attempt 1/3 failed — retry starting in 2 min — 2026-05-19
+> - Exactly which files failed with error details
+> - How many files succeeded before the failure
+> - Confirmation that a retry will start in 2 minutes
+> - A follow-up comment when the retry is triggered
+
+**If all retries exhausted:**
+> ❌ Export FAILED after all 3 attempts — MANUAL ACTION REQUIRED
+> - Complete list of files NOT in Drive
+> - Error details for each
+> - Link to trigger a manual run
+
+### Setting up GitHub Issue email notifications
+
+GitHub emails you automatically when issues are created in your repo. To confirm this is enabled:
+
+1. Go to github.com → click your profile photo → **Settings**
+2. Click **Notifications** in the left sidebar
+3. Under **Participating, @mentions and custom routing** ensure **Email** is checked
+4. Under **Subscriptions** make sure issues in your repo are set to **Watching**
+
+To watch your repo:
+1. Go to your repository
+2. Click the **Watch** button (top right)
+3. Select **All Activity**
+
+### Setting up Issue Labels
+
+The workflow uses labels to categorize notifications. Create these labels in your repo:
+
+1. Go to your repo → **Issues** tab → **Labels** → **New label**
+2. Create these three labels:
+
+| Label | Color | Description |
+|---|---|---|
+| `export-success` | `#2da44e` (green) | Weekly export completed successfully |
+| `export-failure` | `#d1242f` (red) | Weekly export failed |
+| `auto-retry` | `#e3b341` (yellow) | Automatic retry was triggered |
+| `manual-required` | `#8250df` (purple) | Manual intervention required |
 
 ---
 
