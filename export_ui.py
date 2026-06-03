@@ -71,55 +71,34 @@ def gdrive_service():
     return build("drive", "v3", credentials=creds, cache_discovery=False)
 
 
-# Set DRIVE_TYPE environment variable to "shared" for Shared Drive or "personal" for My Drive
-# Defaults to "personal" if not set
-DRIVE_TYPE = os.environ.get("DRIVE_TYPE", "personal").lower()
-
-
 def file_exists_in_drive(service, filename: str, folder_id: str) -> bool:
-    """Check if file exists — handles both Shared Drive and personal My Drive."""
-    if DRIVE_TYPE == "shared":
-        results = service.files().list(
-            q=f"name='{filename}' and '{folder_id}' in parents and trashed=false",
-            fields="files(id, name)",
-            supportsAllDrives=True,
-            includeItemsFromAllDrives=True
-        ).execute()
-    else:
-        results = service.files().list(
-            q=f"name='{filename}' and '{folder_id}' in parents and trashed=false",
-            fields="files(id, name)"
-        ).execute()
+    """Check if file exists in Shared Drive."""
+    results = service.files().list(
+        q=f"name='{filename}' and '{folder_id}' in parents and trashed=false",
+        fields="files(id, name)",
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True
+    ).execute()
     return len(results.get("files", [])) > 0
 
 
 def upload_file_to_drive(service, local_path: Path, folder_id: str) -> str:
-    """Upload file — handles both Shared Drive and personal My Drive."""
+    """Upload file to Shared Drive."""
     size_mb = local_path.stat().st_size // 1024 // 1024
     log.info("  Uploading to Drive: %s (%d MB) ...", local_path.name, size_mb)
     file_metadata = {"name": local_path.name, "parents": [folder_id]}
     media = MediaFileUpload(str(local_path), resumable=True, chunksize=DRIVE_CHUNK)
-
-    if DRIVE_TYPE == "shared":
-        request = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields="id, webViewLink",
-            supportsAllDrives=True
-        )
-    else:
-        request = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields="id, webViewLink"
-        )
-
+    request = service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id, webViewLink",
+        supportsAllDrives=True
+    )
     response = None
     while response is None:
         status, response = request.next_chunk()
         if status:
             log.info("    Drive upload: %d%%", int(status.progress() * 100))
-
     log.info("  Uploaded: %s", response.get("webViewLink", ""))
     return response.get("webViewLink", "")
 
