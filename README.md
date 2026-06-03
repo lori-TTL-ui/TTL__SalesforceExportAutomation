@@ -28,28 +28,14 @@ Automatically downloads Salesforce weekly data export files and uploads them to 
 
 ### Step 2 — Google Drive: Create a Destination Folder
 
-**Option A — Google Workspace (recommended): Shared Drive**
-
-> Use this if your Google account is a Workspace/business account with Shared Drive access.
+> ⚠️ **Important:** This solution requires a **Google Workspace Shared Drive**. Personal Gmail accounts (@gmail.com) do not support service account uploads and will not work. Google Workspace starts at $6/month per user.
 
 1. Go to [drive.google.com](https://drive.google.com) → **Shared drives → + New**
 2. Name it (e.g. `Salesforce Exports`)
-3. Right-click → **Manage members** → add the service account email as **Content Manager**
-4. Open the Shared Drive and copy the **folder ID** from the URL
-
-**Option B — Personal Google Account: My Drive folder**
-
-> Use this if your Google account is a personal @gmail.com account without Shared Drive access.
-
-1. Go to [drive.google.com](https://drive.google.com) → **My Drive → New → Folder**
-2. Name it (e.g. `Salesforce Exports`)
-3. Right-click the folder → **Share**
-4. Add your service account email (e.g. `salesforce-export@project.iam.gserviceaccount.com`) as **Editor**
-5. Click **Share**
-6. Open the folder and copy the **folder ID** from the URL:
-   `https://drive.google.com/drive/folders/FOLDER_ID_HERE`
-
-> **Note:** The script automatically detects whether you are using a Shared Drive or personal Drive folder and handles both correctly.
+3. Right-click the Shared Drive → **Manage members**
+4. Add your service account email (e.g. `salesforce-export@project.iam.gserviceaccount.com`) as **Content Manager**
+5. Open the Shared Drive and copy the **folder ID** from the URL:
+   `https://drive.google.com/drive/u/0/folders/FOLDER_ID_HERE`
 
 ### Step 3 — Salesforce: Create an App for OAuth Access
 
@@ -168,7 +154,6 @@ The refresh token starts with `5Aep` and is about 100 characters long. Everythin
 |---|---|
 | `SF_ORG_DOMAIN` | Your org domain prefix e.g. `mycompany.my` |
 | `WAIT_BETWEEN_DOWNLOADS` | `30` (seconds between downloads) |
-| `DRIVE_TYPE` | `personal` for Gmail/My Drive, `shared` for Google Workspace Shared Drive |
 
 ---
 
@@ -278,7 +263,7 @@ python export_ui.py
 | `OAuth token refresh failed` | Refresh token expired — re-run the authorization URL flow |
 | `Could not find Data Export iframe` | Salesforce export not ready yet — wait for the email notification |
 | `HTTP 429 Too Many Requests` | Increase `WAIT_BETWEEN_DOWNLOADS` variable to 60 |
-| `storageQuotaExceeded` | Must use a Shared Drive, not a regular My Drive folder |
+| `storageQuotaExceeded` | Personal Gmail accounts are not supported — a Google Workspace account with Shared Drive is required |
 | `EOF occurred in violation of protocol` | Transient SSL error — auto-retry will handle it |
 | `No space left on device` | Auto-retry on a fresh runner will have full disk space |
 | `Insufficient Privileges` | Salesforce user needs System Administrator profile |
