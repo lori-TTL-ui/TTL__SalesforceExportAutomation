@@ -64,6 +64,7 @@ jobs:
           GDRIVE_FOLDER_ID:            ${{ secrets.GDRIVE_FOLDER_ID }}
           GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
           WAIT_BETWEEN_DOWNLOADS:      ${{ vars.WAIT_BETWEEN_DOWNLOADS || '30' }}
+          DRIVE_TYPE:                  ${{ vars.DRIVE_TYPE || 'personal' }}
           HEADLESS:                    "true"
         run: |
           python export_ui.py 2>&1 | tee /tmp/export_run.log
