@@ -92,26 +92,67 @@ Paste this URL in your browser while logged into Salesforce as a System Administ
 https://YOUR_ORG_DOMAIN.salesforce.com/services/oauth2/authorize?response_type=code&client_id=YOUR_CONSUMER_KEY&redirect_uri=https://login.salesforce.com/services/oauth2/success
 ```
 
-Click **Allow**, then copy the `code=` value from the redirect URL and run:
+Click **Allow**, then copy the `code=` value from the redirect URL.
 
-```bash
-curl -X POST "https://YOUR_ORG_DOMAIN.salesforce.com/services/oauth2/token" \
-  -d "grant_type=authorization_code" \
-  -d "client_id=YOUR_CONSUMER_KEY" \
-  -d "client_secret=YOUR_CONSUMER_SECRET" \
-  -d "redirect_uri=https://login.salesforce.com/services/oauth2/success" \
-  -d "code=YOUR_CODE"
+Then open a Terminal on your computer:
+- **Mac:** Press `Cmd + Space` → type `Terminal` → press Enter
+- **Windows:** Press `Windows key` → type `PowerShell` → press Enter
+
+**Option 1 — Single-line curl (paste as ONE line, no line breaks):**
+
+```
+curl -X POST "https://YOUR_ORG_DOMAIN.salesforce.com/services/oauth2/token" -d "grant_type=authorization_code&client_id=YOUR_CONSUMER_KEY&client_secret=YOUR_CONSUMER_SECRET&redirect_uri=https://login.salesforce.com/services/oauth2/success&code=YOUR_CODE"
 ```
 
-Copy the `refresh_token` from the response.
+> **Common errors:**
+> - `Bad hostname` — your `YOUR_ORG_DOMAIN` is wrong. Use exactly what appears in your Salesforce URL, e.g. if your org URL is `https://mycompany.my.salesforce.com` use `mycompany.my`
+> - Parameters not sent — make sure the entire command is on ONE line with no line breaks
 
-### Step 5 — GitHub: Create Repository & Add Secrets
+**Option 2 — Python script (recommended, more reliable):**
 
-1. Create a **private** GitHub repository
-2. Upload these files: `export_ui.py`, `requirements.txt`, `.github/workflows/sf_ui_export.yml`
-3. Go to **Settings → Actions → General → Workflow permissions → Read and write permissions** — this allows the workflow to create GitHub Issues for notifications
-4. Go to **Issues → Labels** and create these labels: `export-success` (green), `export-failure` (red), `auto-retry` (yellow), `manual-required` (purple)
-5. Go to **Settings → Secrets and variables → Actions** and add:
+Save this as `get_token.py` on your Desktop, fill in your values, then run `python3 get_token.py` in your terminal:
+
+```python
+import requests
+
+response = requests.post(
+    "https://YOUR_ORG_DOMAIN.salesforce.com/services/oauth2/token",
+    data={
+        "grant_type":    "authorization_code",
+        "client_id":     "YOUR_CONSUMER_KEY",
+        "client_secret": "YOUR_CONSUMER_SECRET",
+        "redirect_uri":  "https://login.salesforce.com/services/oauth2/success",
+        "code":          "YOUR_CODE",
+    }
+)
+print(response.json())
+refresh_token = response.json().get("refresh_token")
+print(f"\n Your SF_REFRESH_TOKEN is:\n{refresh_token}")
+```
+
+Copy the value printed after `Your SF_REFRESH_TOKEN is:` — that is your `SF_REFRESH_TOKEN`.
+
+**If using curl**, the response is a block of JSON. Look for `"refresh_token"` and copy the value between the quotes after it. Example:
+
+```
+{"access_token":"00D...","refresh_token":"5Aep861KIqfMC.MO4Fw6...","scope":"refresh_token full",...}
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^
+                                          Copy THIS value
+```
+
+The refresh token starts with `5Aep` and is about 100 characters long. Everything between the quotes after `"refresh_token":` is your `SF_REFRESH_TOKEN`.
+
+> ⚠️ **IMPORTANT:** The authorization code expires in **~15 minutes**. Have your terminal open and ready BEFORE you click Allow. Copy the code and run the command immediately — do not pause between steps.
+
+### Step 5 — GitHub: Create Your Repository from Template
+
+1. Go to the template repository: **https://github.com/YOUR_CONSULTANT_USERNAME/SalesforceExportAutomation**
+2. Click the green **Use this template** button → **Create a new repository**
+3. Name your repo (e.g. `SalesforceExportAutomation`), set it to **Private**, and click **Create repository**
+4. All files are automatically copied — no uploading needed ✅
+5. Go to **Settings → Actions → General → Workflow permissions → Read and write permissions**
+6. Go to **Issues → Labels** and create these labels: `export-success` (green), `export-failure` (red), `auto-retry` (yellow), `manual-required` (purple)
+7. Go to **Settings → Secrets and variables → Actions** and add:
 
 **Secrets:**
 | Name | Value |
@@ -127,6 +168,7 @@ Copy the `refresh_token` from the response.
 |---|---|
 | `SF_ORG_DOMAIN` | Your org domain prefix e.g. `mycompany.my` |
 | `WAIT_BETWEEN_DOWNLOADS` | `30` (seconds between downloads) |
+| `DRIVE_TYPE` | `personal` for Gmail/My Drive, `shared` for Google Workspace Shared Drive |
 
 ---
 
@@ -244,35 +286,32 @@ python export_ui.py
 
 ---
 
-## Granting Client Access to This Repository
+## Delivering This Package to a Client
 
-Once you have set up the repository, follow these steps to give your client access:
+### Recommended: GitHub Template Repository
 
-### Option A — Invite as a Collaborator (single client)
+This is the cleanest delivery method — each client gets their own independent copy with one click, no file uploading required.
 
-1. Go to your repository on GitHub (e.g. `github.com/YOUR_USERNAME/SalesforceExportAutomation`)
-2. Click the **Settings** tab at the top of the repo page
-3. In the left sidebar click **Collaborators**
-4. Click **Add people**
-5. Enter your client's **GitHub username or email address**
-6. Select their name from the dropdown and click **Add to repository**
-7. Your client will receive an email invitation — they must click **Accept invitation** before they can access the repo
-8. Once accepted, they can view all files and follow the Setup instructions above
+**One-time setup (consultant does this once):**
+1. Go to your **SalesforceExportAutomation** repo → **Settings**
+2. Under **General**, check **Template repository**
+3. Change visibility to **Public** (Settings → Danger Zone → Change visibility)
+   > Safe to make public — no credentials or org-specific URLs are in the code
 
-### Option B — GitHub Template Repository (best for multiple clients)
-
-This approach lets each client create their own independent copy of the repo with one click — recommended if you plan to deliver this to more than one client.
-
-1. Go to your repository → **Settings**
-2. Under the **General** section, check **Template repository**
-3. Change the repo visibility to **Public** (required for templates)
-   - Settings → scroll to **Danger Zone** → **Change visibility → Change to public**
-4. Share this link with your client:
+**For each new client:**
+1. Share this link with your client:
    ```
    https://github.com/YOUR_USERNAME/SalesforceExportAutomation
    ```
-5. Your client clicks **Use this template → Create a new repository**
-6. They name their own private repo and click **Create repository**
-7. All files are copied into their own GitHub account — they then follow the Setup instructions above to add their own secrets and variables
+2. Client clicks **Use this template → Create a new repository**
+3. They name it (e.g. `SalesforceExportAutomation`), set it to **Private**, click **Create repository**
+4. All files are automatically copied into their own repo ✅
+5. They follow the Setup instructions in this README to add their own secrets and variables
 
-> **Note:** Making the repo public is safe because no credentials or org-specific URLs are hardcoded in the code — everything is configured through GitHub Secrets and Variables which are never visible publicly.
+### Alternative: Invite as a Collaborator
+
+If a client doesn't want to manage their own repo, you can invite them to yours:
+
+1. Go to your repo → **Settings → Collaborators → Add people**
+2. Enter their GitHub username or email
+3. They accept the email invitation and can access the repo
