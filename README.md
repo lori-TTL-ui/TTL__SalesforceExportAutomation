@@ -4,6 +4,56 @@ Automatically downloads Salesforce weekly data export files and uploads them to 
 
 ---
 
+## Prerequisites
+
+Before starting setup, ensure you have the following in place:
+
+### 1. GitHub Account
+A free GitHub account is required to host and run the automation.
+Sign up at [github.com/signup](https://github.com/signup) if you don't already have one.
+
+### 2. Google Workspace Account
+A Google Workspace account (Business Starter at $6/user/month or higher) is required to create a Shared Drive for file storage. Personal Gmail accounts (@gmail.com) are **not supported** due to Google API restrictions on service account uploads.
+
+### 3. Confirm Your Salesforce Data Export Schedule
+
+The automation is pre-configured to run every **Tuesday at 11:00 PM Pacific Time** — designed to run after your weekly Salesforce Data Export has finished generating. Before activating, confirm when your export runs.
+
+**Option 1 — Scheduled Jobs UI:**
+In Salesforce Setup, search for **Scheduled Jobs** in the Quick Find box and look for a job named `DataExport` in the list.
+
+**Option 2 — Developer Console Query:**
+Go to **Setup → Developer Console → Query Editor** tab and run:
+
+```sql
+SELECT Id, CronJobDetail.Name, CronJobDetail.JobType,
+       CronExpression, StartTime, EndTime,
+       TimesTriggered, NextFireTime, PreviousFireTime
+FROM CronTrigger
+WHERE CronJobDetail.Name = 'DataExport'
+```
+
+To decode the `CronExpression` value from the results (e.g. `0 15 18 ? * 2`), search Google for:
+```
+decode cron expression "0 15 18 ? * 2"
+```
+substituting your actual value. This tells you the exact day and time your export runs.
+
+The automation should be set to run a few hours **after** your Data Export completes to ensure all files are ready.
+
+**If no scheduled job is found**, your Data Export may not be scheduled yet or its end date may have expired. To schedule it:
+
+1. In Salesforce Setup search for **Data Export** in the Quick Find box
+2. Click **Schedule Export**
+3. Select **Weekly** frequency
+4. Set Start Date to today and End Date to a date far in the future (e.g. 12/31/2030)
+5. Choose a time that completes before our automation runs Tuesday night
+6. Click **Save**
+
+Re-run the SOQL query above to confirm the new schedule.
+
+---
+
 ## What it does
 
 1. Logs into Salesforce using OAuth (no 2FA issues)
