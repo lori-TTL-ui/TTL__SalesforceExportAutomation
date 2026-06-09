@@ -209,13 +209,20 @@ The refresh token starts with `5Aep` and is about 100 characters long. Everythin
 
 ## Schedule
 
-Edit the `cron` line in `.github/workflows/sf_ui_export.yml`:
+The schedule is **commented out by default** in the template to prevent it from running in the template repo. After creating your own repo, enable it:
+
+1. Open `.github/workflows/sf_ui_export.yml`
+2. Find the commented-out schedule lines and uncomment them:
 
 ```yaml
-- cron: "0 7 * * 2"  # Monday 11 PM PST (Tuesday 7 AM UTC)
+  schedule:
+    - cron: "0 7 * * 2"  # Monday 11 PM PST (Tuesday 7 AM UTC)
 ```
 
-Use [crontab.guru](https://crontab.guru) to build your preferred schedule.
+3. Adjust the cron expression to match your preferred time
+4. Commit the change
+
+Use [crontab.guru](https://crontab.guru) to build a custom cron expression. The workflow can also always be triggered manually from the **Actions** tab regardless of the schedule setting.
 
 ---
 
