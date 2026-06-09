@@ -145,13 +145,16 @@ jobs:
               owner, repo,
               title: `✅ Export SUCCESS — ${ok} files uploaded — ${today}`,
               body,
-              labels: ["export-success"],
+              // labels: ["export-success"],  // create these labels in your repo first
             });
 
       # ── FAILURE + AUTO-RETRY ────────────────────────────────────────────────
       - name: Notify failure and auto-retry
         if: failure() && steps.run_export.outcome == 'failure'
         uses: actions/github-script@v7
+        env:
+          FAILED_LIST:   ${{ env.FAILED_LIST }}
+          FAILED_ERRORS: ${{ env.FAILED_ERRORS }}
         with:
           script: |
             const retryCount   = parseInt("${{ github.event.inputs.retry_count || '0' }}");
@@ -161,8 +164,8 @@ jobs:
             const ok           = "${{ env.EXPORT_OK }}";
             const skipped      = "${{ env.EXPORT_SKIPPED }}";
             const failed       = "${{ env.EXPORT_FAILED }}";
-            const failedList   = `${{ env.FAILED_LIST }}`;
-            const failedErrors = `${{ env.FAILED_ERRORS }}`;
+            const failedList   = process.env.FAILED_LIST   || "(unknown)";
+            const failedErrors = process.env.FAILED_ERRORS || "(unknown)";
             const today        = new Date().toISOString().slice(0, 10);
             const { owner, repo } = context.repo;
             const waitMinutes  = 2;
@@ -204,7 +207,7 @@ jobs:
                 owner, repo,
                 title: `⚠️ Export attempt ${attemptNum}/${maxRetries + 1} failed — retry starting in ${waitMinutes} min — ${today}`,
                 body,
-                labels: ["export-failure", "auto-retry"],
+                // labels: ["export-failure", "auto-retry"],  // create these labels in your repo first
               });
 
               console.log(`Waiting ${waitMinutes} minutes before triggering retry...`);
@@ -264,6 +267,6 @@ jobs:
                 owner, repo,
                 title: `❌ Export FAILED after all ${maxRetries + 1} attempts — MANUAL ACTION REQUIRED — ${today}`,
                 body,
-                labels: ["export-failure", "manual-required"],
+                // labels: ["export-failure", "manual-required"],  // create these labels in your repo first
               });
             }
