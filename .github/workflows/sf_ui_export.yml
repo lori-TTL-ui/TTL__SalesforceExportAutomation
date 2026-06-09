@@ -1,8 +1,12 @@
 name: Salesforce Data Export to Google Drive
 
 on:
-  schedule:
-    - cron: "0 7 * * 2"  # Default: Monday 11 PM PST (Tue 7 AM UTC) — adjust to your timezone
+  # TEMPLATE NOTE: The schedule below is DISABLED in the template repo intentionally.
+  # After creating your own repo from this template, uncomment the schedule lines
+  # and set your preferred cron time. Default is Monday 11 PM PST (Tue 7 AM UTC).
+  #
+  # schedule:
+  #   - cron: "0 7 * * 2"  # Monday 11 PM PST (Tue 7 AM UTC)
   workflow_dispatch:
     inputs:
       retry_count:
