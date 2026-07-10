@@ -13,11 +13,11 @@ A free GitHub account is required to host and run the automation.
 Sign up at [github.com/signup](https://github.com/signup) if you don't already have one.
 
 ### 2. Google Workspace Account
-A Google Workspace account (Business Starter at $6/user/month or higher) is required to create a Shared Drive for file storage. Personal Gmail accounts (@gmail.com) are **not supported** due to Google API restrictions on service account uploads.
+A Google Workspace account (Business Starter at $6/user/month or higher) is required to create a Shared Drive for file storage. Personal Gmail accounts (@gmail.com) are **not supported** due to Go[...]
 
 ### 3. Confirm Your Salesforce Data Export Schedule
 
-The automation is pre-configured to run every **Tuesday at 11:00 PM Pacific Time** — designed to run after your weekly Salesforce Data Export has finished generating. Before activating, confirm when your export runs.
+The automation is pre-configured to run every **Tuesday at 11:00 PM Pacific Time** — designed to run after your weekly Salesforce Data Export has finished generating. Before activating, confirm [...]
 
 **Option 1 — Scheduled Jobs UI:**
 In Salesforce Setup, search for **Scheduled Jobs** in the Quick Find box and look for a job named `DataExport` in the list.
@@ -62,6 +62,7 @@ Re-run the SOQL query above to confirm the new schedule.
 4. Uploads each file to your Google Shared Drive with a date suffix (e.g. `WE_OrgExport_1_20260512.ZIP`)
 5. Retries automatically up to 3 times on failure
 6. Creates a GitHub Issue if all retries fail
+7. Optionally deletes old files from Google Drive based on a configurable retention policy
 
 ---
 
@@ -78,7 +79,7 @@ Re-run the SOQL query above to confirm the new schedule.
 
 ### Step 2 — Google Drive: Create a Destination Folder
 
-> ⚠️ **Important:** This solution requires a **Google Workspace Shared Drive**. Personal Gmail accounts (@gmail.com) do not support service account uploads and will not work. Google Workspace starts at $6/month per user.
+> ⚠️ **Important:** This solution requires a **Google Workspace Shared Drive**. Personal Gmail accounts (@gmail.com) do not support service account uploads and will not work. Google Workspace [...]
 
 1. Go to [drive.google.com](https://drive.google.com) → **Shared drives → + New**
 2. Name it (e.g. `Salesforce Exports`)
@@ -137,7 +138,7 @@ Then open a Terminal on your computer:
 **Option 1 — Single-line curl (paste as ONE line, no line breaks):**
 
 ```
-curl -X POST "https://YOUR_ORG_DOMAIN.salesforce.com/services/oauth2/token" -d "grant_type=authorization_code&client_id=YOUR_CONSUMER_KEY&client_secret=YOUR_CONSUMER_SECRET&redirect_uri=https://login.salesforce.com/services/oauth2/success&code=YOUR_CODE"
+curl -X POST "https://YOUR_ORG_DOMAIN.salesforce.com/services/oauth2/token" -d "grant_type=authorization_code&client_id=YOUR_CONSUMER_KEY&client_secret=YOUR_CONSUMER_SECRET&redirect_uri=https://l[...]
 ```
 
 > **Common errors:**
@@ -172,13 +173,13 @@ Copy the value printed after `Your SF_REFRESH_TOKEN is:` — that is your `SF_RE
 
 ```
 {"access_token":"00D...","refresh_token":"5Aep861KIqfMC.MO4Fw6...","scope":"refresh_token full",...}
-                                          ^^^^^^^^^^^^^^^^^^^^^^^^
-                                          Copy THIS value
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^
+                                           Copy THIS value
 ```
 
 The refresh token starts with `5Aep` and is about 100 characters long. Everything between the quotes after `"refresh_token":` is your `SF_REFRESH_TOKEN`.
 
-> ⚠️ **IMPORTANT:** The authorization code expires in **~15 minutes**. Have your terminal open and ready BEFORE you click Allow. Copy the code and run the command immediately — do not pause between steps.
+> ⚠️ **IMPORTANT:** The authorization code expires in **~15 minutes**. Have your terminal open and ready BEFORE you click Allow. Copy the code and run the command immediately — do not pause[...]
 
 ### Step 5 — GitHub: Create Your Repository from Template
 
@@ -204,6 +205,7 @@ The refresh token starts with `5Aep` and is about 100 characters long. Everythin
 |---|---|
 | `SF_ORG_DOMAIN` | Your org domain prefix e.g. `mycompany.my` |
 | `WAIT_BETWEEN_DOWNLOADS` | `30` (seconds between downloads) |
+| `RETENTION_DAYS` | `0` (0 = never delete, or number of days to keep files) |
 
 ---
 
@@ -223,6 +225,31 @@ The schedule is **commented out by default** in the template to prevent it from 
 4. Commit the change
 
 Use [crontab.guru](https://crontab.guru) to build a custom cron expression. The workflow can also always be triggered manually from the **Actions** tab regardless of the schedule setting.
+
+---
+
+## Retention & Cleanup
+
+By default, all exported files are kept in Google Drive indefinitely. To automatically delete old files after a specified number of days, set the `RETENTION_DAYS` variable.
+
+### How it works
+
+- **Default (`RETENTION_DAYS = 0`):** All files are kept forever — no deletion
+- **Custom value (e.g. `RETENTION_DAYS = 90`):** Files older than 90 days are automatically deleted from Google Drive
+
+The cleanup runs **after** the export completes each week. Only files matching the export naming pattern (e.g. `WE_OrgExport_1_*.ZIP`) are considered for deletion. Other files in the Shared Drive are not affected.
+
+### Setting up retention
+
+1. Go to your repo → **Settings → Secrets and variables → Actions**
+2. Click the **Variables** tab
+3. Add or edit `RETENTION_DAYS`:
+   - Set to `0` to keep all files (default)
+   - Set to any number (e.g. `90`, `180`, `365`) for the number of days to retain
+
+Example: `RETENTION_DAYS = 90` means files older than 90 days will be deleted.
+
+> **Note:** Deletion is based on the file's creation date in Google Drive, not the date suffix in the filename.
 
 ---
 
@@ -307,6 +334,7 @@ export SF_ORG_DOMAIN="yourorg.my"
 export GDRIVE_FOLDER_ID="..."
 export GDRIVE_SERVICE_ACCOUNT_JSON='{ ...json... }'
 export HEADLESS=false  # watch the browser
+export RETENTION_DAYS=0  # optional: 0 = never delete, or number of days
 
 python export_ui.py
 ```
