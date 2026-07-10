@@ -10,7 +10,7 @@ import json
 import logging
 import time
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
@@ -41,6 +41,7 @@ HEADLESS     = os.environ.get("HEADLESS", "true").lower() != "false"
 DOWNLOAD_DIR = Path("/tmp/sf_exports")
 DRIVE_CHUNK  = 50 * 1024 * 1024
 WAIT_BETWEEN_DOWNLOADS = int(os.environ.get("WAIT_BETWEEN_DOWNLOADS", "30"))
+RETENTION_DAYS = int(os.environ.get("RETENTION_DAYS", "0"))
 
 # ---------------------------------------------------------------------------
 # Salesforce OAuth
@@ -101,6 +102,53 @@ def upload_file_to_drive(service, local_path: Path, folder_id: str) -> str:
             log.info("    Drive upload: %d%%", int(status.progress() * 100))
     log.info("  Uploaded: %s", response.get("webViewLink", ""))
     return response.get("webViewLink", "")
+
+
+def cleanup_old_files(service, folder_id: str, retention_days: int):
+    """Delete files older than retention_days from the Shared Drive."""
+    if retention_days <= 0:
+        log.info("Retention cleanup disabled (RETENTION_DAYS = 0)")
+        return
+    
+    log.info("Starting retention cleanup (keeping last %d days of files) ...", retention_days)
+    
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    log.info("Cutoff date: %s (files older than this will be deleted)", cutoff_date.isoformat())
+    
+    try:
+        results = service.files().list(
+            q=f"'{folder_id}' in parents and trashed=false and name contains '.ZIP'",
+            fields="files(id, name, createdTime)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+            pageSize=100
+        ).execute()
+        
+        files = results.get("files", [])
+        log.info("Found %d ZIP file(s) in Drive", len(files))
+        
+        deleted_count = 0
+        for file in files:
+            try:
+                created_time_str = file.get("createdTime")
+                created_time = datetime.fromisoformat(created_time_str.replace("Z", "+00:00"))
+                
+                if created_time < cutoff_date:
+                    log.info("  Deleting: %s (created: %s)", file.get("name"), created_time_str)
+                    service.files().delete(
+                        fileId=file.get("id"),
+                        supportsAllDrives=True
+                    ).execute()
+                    deleted_count += 1
+                else:
+                    log.info("  Keeping: %s (created: %s)", file.get("name"), created_time_str)
+            except Exception as e:
+                log.error("  Error processing file %s: %s", file.get("name"), e)
+        
+        log.info("Cleanup complete: %d file(s) deleted", deleted_count)
+    except Exception as e:
+        log.error("Retention cleanup failed: %s", e)
+        raise
 
 # ---------------------------------------------------------------------------
 # Browser helpers
@@ -323,6 +371,9 @@ def main():
     log.info("OK: %d  Skipped: %d  Failed: %d", len(ok), len(skipped), len(failed))
     for r in failed:
         log.error("  FAILED: %s -- %s", r["file"], r.get("error"))
+
+    log.info("\n=== Retention Cleanup ===")
+    cleanup_old_files(drive, GDRIVE_FOLDER_ID, RETENTION_DAYS)
 
     if failed:
         raise SystemExit(f"Completed with {len(failed)} error(s).")
